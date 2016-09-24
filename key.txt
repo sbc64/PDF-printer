@@ -1,0 +1,3 @@
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion
+
+USR:Software\Microsoft\Windows NT\CurrentVersion\Devices

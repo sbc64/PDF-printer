@@ -1,0 +1,26 @@
+gswin64c.exe -dPrinted -sDEVICE=mswinpr2 -sPAPERSIZE=ledger -dFIXEDMEDIA -dFitPage -sOutputFile="%printer%KONICA MINOLTA 423" PB10.2040\ R0.PDF -c quit
+gswin64c.exe -dPrinted -sDEVICE=mswinpr2 -sPAPERSIZE=letter -dFIXEDMEDIA -dFitPage -sOutputFile="%printer%KONICA MINOLTA 423" PB10.2040\ R0.PDF -c quit
+
+gswin64c.exe -q -dPrinted -sDEVICE=mswinpr2 -sPAPERSIZE=letter -dFitPage -dNOPROMPT -dFIXEDMEDIA -sOutputFile="%printer%KONICA MINOLTA 423" LB0004365\ R3.PDF
+
+
+gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE=letter -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="%printer%KONICA MINOLTA 423" LB0004365\ R3.PDF
+
+
+gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE=ledger -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="%printer%KONICA MINOLTA 423" *.PDF
+
+
+
+gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -dNoCancel -sPAPERSIZE=letter -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="%printer%KONICA MINOLTA 423" "C:\Users\sebastianb\\Desktop\Tests\pdfprinter\PD15.0017 R1.PDF"
+
+
+
+Flow:
+
+Check if printer is configured and exists.
+
+Run central screen that has the filebrowser.
+
+When process start, run the threaded UI with queue
+
+When process is close the threaded UI and display the done message.
