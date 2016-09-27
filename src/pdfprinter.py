@@ -59,7 +59,7 @@ def readExcel(fileToRead):
 
 					excelTempDict['DRAWING']=str(ws.cell(row,4).value).rstrip()
 					excelTempDict['REV']=str(ws.cell(row,5).value).rstrip()
-					excelTempDict['GAGE']=str(ws.cell(row,0).value).rstrip()
+					excelTempDict['GAGE']=str(ws.cell(row,8).value).rstrip()
 					dictList.append(excelTempDict)
 
 		elif fileToRead.split(".")[1] == "xlsx" or fileToRead.split(".")[1] == "XLSX":
@@ -115,6 +115,7 @@ def sortPartNumberList(excelInfo):
 	allList = []
 
 	for dictx in dictsSortedByGage:
+		#Sebastian
 		#print (dictx['GAGE'])
 
 		if previousGage == None:
@@ -270,8 +271,7 @@ class mainUIClass:
 			return None
 
 
-		excelInformation = readExcel(str(self.entryVar.get()))
-		orderedExcelInfo = sortPartNumberList(excelInformation)
+		orderedExcelInfo = sortPartNumberList(readExcel(str(self.entryVar.get())))
 		temp = findPDFs(orderedExcelInfo)
 		self.PDFs = temp [0]
 		self.unfoundItems = temp[1]
