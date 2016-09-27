@@ -10,6 +10,7 @@ from tkinter import ttk
 import threading
 from operator import itemgetter
 import io
+from time import asctime
 #import win32api
 import winreg
 
@@ -19,21 +20,21 @@ def checkDependencies():
 
 def checkGhostScriptPath():
 	try:
-	    pathKey = "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment"
-	    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,"System\CurrentControlSet\Control\Session Manager\Environment",0,winreg.KEY_ALL_ACCESS)
-	    oldPath = winreg.QueryValueEx(key, "Path")
-	    dirsList = oldPath[0].rsplit(';')
-	    ghostscriptPath = r"C:\Program Files\gs\gs9.19"
-	    pathIsPresent = False
-	    for x in dirsList:
-	        if ghostscriptPath == x:
-	            pathIsPresent = True
+		pathKey = "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment"
+		key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,"System\CurrentControlSet\Control\Session Manager\Environment",0,winreg.KEY_ALL_ACCESS)
+		oldPath = winreg.QueryValueEx(key, "Path")
+		dirsList = oldPath[0].rsplit(';')
+		ghostscriptPath = r"C:\Program Files\gs\gs9.19"
+		pathIsPresent = False
+		for x in dirsList:
+			if ghostscriptPath == x:
+				pathIsPresent = True
 
-	    if not pathIsPresent:
-	        newPath =oldPath[0]+";"+ghostscriptPath
-	        winreg.SetValueEx(key,"Path",0,2,newPath)
+		if not pathIsPresent:
+			newPath =oldPath[0]+";"+ghostscriptPath
+			winreg.SetValueEx(key,"Path",0,2,newPath)
 
-	    winreg.CloseKey(key)
+		winreg.CloseKey(key)
 	except:
 		pass
 
@@ -138,23 +139,6 @@ def sortPartNumberList(excelInfo):
 			orderedList.append(x)
 	return orderedList
 
-def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
-
-	command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
-	#command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -dNoCancel -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
-	#the following string shoudl generate something like this: -sOutputFile="\\spool\KONICA MINOLTA 423"
-	command = command + "\"\\\\spool\\"+printer+"\" "
-	command = command + pdfPath
-	"""
-	command = r"gswin64c.exe -dPrinted -q -dNoCancel -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE "
-	command = command + pdfPath
-	"""
-	#print (command)
-	with open(filex, 'a') as g:
-		gs = subprocess.run(command, shell=True, stdout=g,stderr=g,stdin=None)
-	if gs.returncode != None:
-		#print ("Finished")
-		return jobCounter + 1
 
 class mainUIClass:
 
@@ -166,7 +150,8 @@ class mainUIClass:
 		self.paperLedger = 'ledger'
 		self.jobCounter = 0
 		self.PDFs = None
-		self.POPENFile = 'tmpgs'
+		self.user = os.getlogin()
+		self.POPENFile = 'C:\\Users\\'+self.user+'\\tmpgs'
 		#self.t = Toplevel
 
 		self.printer = 'KONICA MINOLTA 423'
@@ -178,7 +163,7 @@ class mainUIClass:
 		master.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
 		"""
 
-		self.top_label = Label (master, text="Select the file that contains the partnumbers.")
+		self.top_label = Label (master, text="Browse for the spreadsheet that contains the partnumbers.")
 		self.top_label.grid(row=0, column=1, sticky=W)
 
 
@@ -225,7 +210,7 @@ class mainUIClass:
 		self.close_button = Button(master, text="Close", command=master.quit)
 		self.close_button.grid(row=15, column=1,sticky=W,pady=5,padx=4)
 
-		self.options_button = Button(master, text="Options",command=self.create_options_window)
+		self.options_button = Button(master, text="Printer Settings",command=self.create_options_window)
 		self.options_button.grid(row=15,column=1,pady=5,sticky=E,padx=10)
 
 
@@ -349,20 +334,19 @@ class mainUIClass:
 		self.options_windows.bind("<FocusOut>", self.Alarm)
 
 	def save_options_and_destroy_options_window(self):
-		f = open('C:\\Users\\'+user+'\\pdf_printer_settings','w+')
+		f = open('C:\\Users\\'+self.user+'\\pdf_printer_settings','w+')
 		f.write(self.selectedPrinter.get())
 		f.close()
 		self.options_windows.destroy()
 
 
 	def printFiles(self):
-		f = open(self.POPENFile,'w+')
-		f.close()
+
 		for pdf in self.PDFs:
 			self.jobCounter = ghostscript(pdf, self.jobCounter, self.selectedPrinter.get(), self.paperTypeLetter,self.POPENFile)
 			#print (jobCounter)
-		#self.progress.step(400)
-		os.remove(self.POPENFile)
+
+		#os.remove(self.POPENFile)
 		posx  = 500
 		posy  = 400
 		sizex = 500
@@ -377,20 +361,80 @@ class mainUIClass:
 		button = Button(top,text="Ok", command=top.quit)
 		button.grid(row=1, column=0)
 
+def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
+	filex = open(filex,'w+')
+	filex.write(asctime()+"\n")
+	filex.write(str(jobCounter)+"\n")
+	filex.write(printer+"\n")
+	filex.write(pdfPath+"\n")
+	filex.write(paperType+"\n")
+	filex.write(str(os.getcwd())+"\n")
+	global isFrozen
+	if isFrozen:
+		#command = sys._MEIPASS+r"\gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+		command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+		#the following string shoudl generate something like this: -sOutputFile="\\spool\KONICA MINOLTA 423"
+		command = command + "\"\\\\spool\\"+printer+"\" "
+		command = command + pdfPath
+		#print (command)
+	else:
+		command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+		#command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -dNoCancel -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+		#the following string shoudl generate something like this: -sOutputFile="\\spool\KONICA MINOLTA 423"
+		command = command + "\"\\\\spool\\"+printer+"\" "
+		command = command + pdfPath
+	"""
+	command = r"gswin64c.exe -dPrinted -q -dNoCancel -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE "
+	command = command + pdfPath
+	"""
+	filex.write(command+"\n")
+
+	#print (command)
+
+
+	try:
+		gs = subprocess.Popen(command, shell=True, stdout=filex,stderr=filex,stdin=None)
+	except:
+		filex.write("POPEN\n")
+		filex.write(str(sys.exc_info()[0]))
+		filex.write(str(sys.exc_info()[1]))
+		filex.write("\n")
+	try:
+		while True:
+			gs.poll()
+			if gs.returncode != None:
+				#print ("Finished")
+				return jobCounter + 1
+	except:
+		filex.write("returncode\n")
+		filex.write(str(sys.exc_info()[0]))
+		filex.write(str(sys.exc_info()[1]))
+		filex.write("\n")
+
+
+	filex.write("\n")
+	f.close()
 
 if __name__=="__main__":
-	checkGhostScriptPath()
+	global isFrozen
 
+
+	checkGhostScriptPath()
 	root = tkinter.Tk()
+	if getattr(sys, 'frozen', False):
+		isFrozen = True
+		root.iconbitmap(sys._MEIPASS+r"/emblem_print.ico")
+	else:
+		root.iconbitmap("emblem_print.ico")
+		isFrozen = False
 	root.style = ttk.Style()
 	mainUI = mainUIClass(root)
 	root.style.theme_use("winnative")
-	global user
-	user = os.getlogin()
+
 	try:
-		f = open('C:\\Users\\'+user+'\\pdf_printer_settings','r+')
+		f = open('C:\\Users\\'+os.getlogin()+'\\pdf_printer_settings','r+')
 	except IOError:
-		f = open('C:\\Users\\'+user+'\\pdf_printer_settings','w+')
+		f = open('C:\\Users\\'+os.getlogin()+'\\pdf_printer_settings','w+')
 
 	mainUI.selectedPrinter.set(f.readline().rstrip())
 	f.close()

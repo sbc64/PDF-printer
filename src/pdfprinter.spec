@@ -7,7 +7,7 @@ a = Analysis(['pdfprinter.py'],
              pathex=['C:\\Users\\sebastianb\\Desktop\\Repositories\\pdfprinter\\src'],
              binaries=[],
              datas=[],
-             hiddenimports=['pyexcel_io'],
+             hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -16,18 +16,21 @@ a = Analysis(['pdfprinter.py'],
              cipher=block_cipher)
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
+
+a.datas += [('gsdll64.dll','gsdll64.dll','DATA')]
+a.datas += [('gsdll64.lib','gsdll64.lib','DATA')]
+a.datas += [('gswin64c.exe','gswin64c.exe','DATA')]
+a.datas += [('gswin64.exe','gswin64.exe','DATA')]
+a.datas += [('emblem_print.ico','emblem_print.ico','DATA')]
+
 exe = EXE(pyz,
           a.scripts,
-          exclude_binaries=True,
+          a.binaries,
+          a.zipfiles,
+          a.datas,
           name='pdfprinter',
           debug=False,
           strip=False,
           upx=True,
-          console=True )
-coll = COLLECT(exe,
-               a.binaries,
-               a.zipfiles,
-               a.datas,
-               strip=False,
-               upx=True,
-               name='pdfprinter')
+          console=False,
+ 					icon='emblem_print.ico')
