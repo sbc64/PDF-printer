@@ -371,8 +371,8 @@ def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
 	filex.write(str(os.getcwd())+"\n")
 	global isFrozen
 	if isFrozen:
-		#command = sys._MEIPASS+r"\gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
-		command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+		command = sys._MEIPASS+r"\gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+		#command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
 		#the following string shoudl generate something like this: -sOutputFile="\\spool\KONICA MINOLTA 423"
 		command = command + "\"\\\\spool\\"+printer+"\" "
 		command = command + pdfPath
@@ -393,7 +393,7 @@ def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
 
 
 	try:
-		gs = subprocess.Popen(command, shell=True, stdout=filex,stderr=filex,stdin=None)
+		gs = subprocess.Popen(command, shell=True, stdout=filex,stderr=subprocess.STDOUT,stdin=subprocess.PIPE)
 	except:
 		filex.write("POPEN\n")
 		filex.write(str(sys.exc_info()[0]))
