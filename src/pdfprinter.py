@@ -1,20 +1,41 @@
 import os, sys
 import win32print
-from pyexcel_xls import get_data
+from xlrd import open_workbook
 from openpyxl import load_workbook
 import subprocess
-import easygui
 from tkinter import filedialog, Tk, Label, Button, LEFT, RIGHT, W, Message, StringVar, Toplevel, Listbox, ttk, Text
 from tkinter import *
 import tkinter
 from tkinter import ttk
-from shutil import copyfile
 import threading
 from operator import itemgetter
-import win32api
+import io
+#import win32api
+import winreg
+
 
 def checkDependencies():
 	pass
+
+def checkGhostScriptPath():
+	try:
+	    pathKey = "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment"
+	    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,"System\CurrentControlSet\Control\Session Manager\Environment",0,winreg.KEY_ALL_ACCESS)
+	    oldPath = winreg.QueryValueEx(key, "Path")
+	    dirsList = oldPath[0].rsplit(';')
+	    ghostscriptPath = r"C:\Program Files\gs\gs9.19"
+	    pathIsPresent = False
+	    for x in dirsList:
+	        if ghostscriptPath == x:
+	            pathIsPresent = True
+
+	    if not pathIsPresent:
+	        newPath =oldPath[0]+";"+ghostscriptPath
+	        winreg.SetValueEx(key,"Path",0,2,newPath)
+
+	    winreg.CloseKey(key)
+	except:
+		pass
 
 def readExcel(fileToRead):
 	partNumberList, drawingNOList, revLevelList, gageList = [],[],[],[]
@@ -22,10 +43,11 @@ def readExcel(fileToRead):
 	dictList = []
 	if fileToRead:
 		if fileToRead.split(".")[1] == "xls" or fileToRead.split(".")[1] == "XLS":
-			ws = get_data(str(fileToRead))['Sheet1']
-			for row in ws:
+			wb = open_workbook(str(fileToRead))
+			ws = wb.sheets()[0]
+			for row in range(ws.nrows):
 				excelTempDict = {}
-				partnumber = row[0].rstrip()
+				partnumber = str(ws.cell(row,0).value).rstrip()
 				if not partnumber == 'partno':
 					if (partnumber[-1] == 'F'):
 						excelTempDict['PARTNO']=partnumber[:-1]
@@ -34,16 +56,16 @@ def readExcel(fileToRead):
 					else:
 						excelTempDict['PARTNO']=partnumber
 
-					excelTempDict['DRAWING']=str(row[4]).rstrip()
-					excelTempDict['REV']=str(row[5]).rstrip()
-					excelTempDict['GAGE']=str(row[8]).rstrip()
+					excelTempDict['DRAWING']=str(ws.cell(row,4).value).rstrip()
+					excelTempDict['REV']=str(ws.cell(row,5).value).rstrip()
+					excelTempDict['GAGE']=str(ws.cell(row,0).value).rstrip()
 					dictList.append(excelTempDict)
 
 		elif fileToRead.split(".")[1] == "xlsx" or fileToRead.split(".")[1] == "XLSX":
-			ws = load_workbook(filename=fileToRead)['Sheet1']
+			ws = load_workbook(filename=str(fileToRead))['Sheet1']
 			for row in ws.rows:
 				excelTempDict = {}
-				partnumber = str(row[0].value.rstrip())
+				partnumber = str(row[0].value).rstrip()
 				if not partnumber == 'partno':
 					if (partnumber[-1] == 'F'):
 						excelTempDict['PARTNO']=partnumber[:-1]
@@ -52,14 +74,10 @@ def readExcel(fileToRead):
 					else:
 						excelTempDict['PARTNO']=partnumber
 
-					excelTempDict['DRAWING']=str(row[4].value.rstrip())
+					excelTempDict['DRAWING']=str(row[4].value).rstrip()
 					excelTempDict['REV']=str(row[5].value).rstrip()
 					excelTempDict['GAGE']=str(row[8].value).rstrip()
 					dictList.append(excelTempDict)
-
-		else:
-			easygui.msgbox("File type not supported")
-			return
 	return dictList
 
 def findPDFs(completelyOrderedDictList):
@@ -120,30 +138,35 @@ def sortPartNumberList(excelInfo):
 			orderedList.append(x)
 	return orderedList
 
-def ghostscript(pdfPath, jobCounter, printer,paperType):
-	"""
-	command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -dNoCancel -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
+
+	command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+	#command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -dNoCancel -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
 	#the following string shoudl generate something like this: -sOutputFile="\\spool\KONICA MINOLTA 423"
 	command = command + "\"\\\\spool\\"+printer+"\" "
 	command = command + pdfPath
 	"""
 	command = r"gswin64c.exe -dPrinted -q -dNoCancel -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE "
 	command = command + pdfPath
-
+	"""
 	#print (command)
-	with open('tmp', 'a') as g:
+	with open(filex, 'a') as g:
 		gs = subprocess.run(command, shell=True, stdout=g,stderr=g,stdin=None)
 	if gs.returncode != None:
 		#print ("Finished")
-		jobCounter = jobCounter + 1
-		return jobCounter
+		return jobCounter + 1
 
 class mainUIClass:
 
 	def __init__(self,master):
 		self.master = master
 		self.master.title("PDF printer")
-
+		self.selectedPrinter = StringVar()
+		self.paperTypeLetter = 'letter'
+		self.paperLedger = 'ledger'
+		self.jobCounter = 0
+		self.PDFs = None
+		self.POPENFile = 'tmpgs'
 		#self.t = Toplevel
 
 		self.printer = 'KONICA MINOLTA 423'
@@ -155,25 +178,25 @@ class mainUIClass:
 		master.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
 		"""
 
-		self.top_label = Label (master, text="Please select the file you want to print the part numbers from.")
+		self.top_label = Label (master, text="Select the file that contains the partnumbers.")
 		self.top_label.grid(row=0, column=1, sticky=W)
 
 
 		self.entryVar = StringVar()
 		#self.entryVar.set("Browse for burn file")
 		self.path_show = Label(master, width=100, background="white", anchor=W, relief=GROOVE, height=1, textvariable=self.entryVar)
-		self.path_show.grid(row=1, column=1,columnspan=2)
+		self.path_show.grid(row=1, column=1,columnspan=2, padx=5)
 
 		self.browse_button = Button(master, text="Browse", command=self.askFilename)
-		self.browse_button.grid(row=1, column=3, sticky=W)
+		self.browse_button.grid(row=1, column=3, sticky=E, padx=10)
 
 
 		#Headers
 		self.label_found_files_header = Label(master,text="Files that were found:")
-		self.label_found_files_header.grid(row=2, column=1,sticky=W)
+		self.label_found_files_header.grid(row=3, column=1,sticky=W)
 
 		self.label_unfound_files_header = Label(master,text="Parts that were NOT found:")
-		self.label_unfound_files_header.grid(row=2, column=2,sticky=W)
+		self.label_unfound_files_header.grid(row=3, column=2,sticky=W)
 
 		self.label_wrong_revision_header = Label(master,text="Parts with wrong revision:")
 		self.label_wrong_revision_header.grid(row=5, column=2,sticky=W)
@@ -194,29 +217,73 @@ class mainUIClass:
 		self.text_unfound_files_body.configure(state=DISABLED)
 		self.text_revision_body.configure(state=DISABLED)
 
-
 		#Progress bar
-
+		#self.progress = ttk.Progressbar(master, orient="horizontal",length=400, mode="determinate")
+		#self.progress.grid(row=14,column=1, columnspan=4, pady=20,sticky=W+E, padx=10)
 
 		#Buttons
 		self.close_button = Button(master, text="Close", command=master.quit)
-		self.close_button.grid(row=15, column=1,sticky=W,pady=5)
+		self.close_button.grid(row=15, column=1,sticky=W,pady=5,padx=4)
 
-		self.options_button = Button(master, text="Options")
-		self.options_button.grid(row=15,column=1,pady=5)
+		self.options_button = Button(master, text="Options",command=self.create_options_window)
+		self.options_button.grid(row=15,column=1,pady=5,sticky=E,padx=10)
 
-		printingThread = threading.Thread(target=self.printFiles)
-		self.excecute_button = Button(master, text="Print", command=printingThread.start)
-		self.excecute_button.grid(row=15,column=3,sticky=W,pady=5)
+
+		self.excecute_button = Button(master, text="Print", command=self.checkSettingsBeforePrint)
+		self.excecute_button.grid(row=15,column=3,sticky=E,pady=5,padx=10)
+
+
+	def checkSettingsBeforePrint(self):
+
+		if self.selectedPrinter.get != '' and self.PDFs !=None :
+			printingThread = threading.Thread(target=self.printFiles)
+			printingThread.start()
+		else:
+			posx  = 500
+			posy  = 400
+			sizex = 500
+			sizey = 100
+			top = Toplevel()
+			top.grid_rowconfigure(0,weigh=1)
+			top.grid_columnconfigure(0, weight=1)
+			top.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
+			top.title("No file loaded")
+			msg = Message(top, text="Browse for a file before printing.",width=200, pady=10)
+			msg.grid(row=0, column=0,columnspan=5)
+			button = Button(top,text="Ok", command=top.destroy)
+			button.grid(row=1, column=0)
+			return None
+
 
 	def askFilename(self):
 		currdir = os.getcwd()
 		filey = None
-		filey = filedialog.askopenfilename(parent=self.master, initialdir=currdir, title='Please select burn file')
+		filey = filedialog.askopenfilename(parent=self.master, initialdir=currdir, title='Select burn file')
 
 		if type(filey) == str:
 			self.entryVar.set(filey)
-			self.entryVar.set(filey)
+			try:
+				if not (str(self.entryVar.get()).split(".")[1] == "xls" or str(self.entryVar.get()).split(".")[1] == "XLS" or str(self.entryVar.get()).split(".")[1] == "xlsx" or str(self.entryVar.get()).split(".")[1] == "XLSX"):
+					top = Toplevel()
+					top.title("Wrong file type")
+					msg = Message(top, text="You selected a wrong file type.\nPlease use xls or xlsx.", width=300, anchor=CENTER)
+					msg.grid(row=0, column=0)
+					button = Button(top,text="Ok", command=top.destroy)
+					button.grid(row=1, column=0)
+					self.entryVar.set("")
+					return None
+			except:
+				top = Toplevel()
+				top.title("Wrong file type")
+				msg = Message(top, text="You selected a wrong file type.\nPlease use xls or xlsx.", width=300, anchor=CENTER)
+				msg.grid(row=0, column=0)
+				button = Button(top,text="Ok", command=top.destroy)
+				button.grid(row=1, column=0)
+				self.entryVar.set("")
+				return None
+		else:
+			return None
+
 
 		excelInformation = readExcel(str(self.entryVar.get()))
 		orderedExcelInfo = sortPartNumberList(excelInformation)
@@ -224,29 +291,28 @@ class mainUIClass:
 		self.PDFs = temp [0]
 		self.unfoundItems = temp[1]
 		self.wrongRevsion = temp[2]
-		#print (temp[2])
+
+		#Populate the text fields
 		self.text_found_files_body.configure(state=NORMAL)
 		self.text_unfound_files_body.configure(state=NORMAL)
 		self.text_revision_body.configure(state=NORMAL)
 
-
 		counter = 0
 		for pdf in self.PDFs:
-			self.text_found_files_body.insert(str(counter)+'.0',pdf+"\n")
+			self.text_found_files_body.insert(str(counter)+'.0',pdf.replace("\"","")+"\n")
 			counter += 1
+
+		self.totalFiles = counter
 		counter = 0
 
 		for part in self.unfoundItems:
-			self.text_unfound_files_body.insert(str(counter)+'.0', part+"\n")
+			self.text_unfound_files_body.insert(str(counter)+'.0', part.replace("\"","")+"\n")
 			counter += 1
 
 		counter = 0
 		for part in self.wrongRevsion:
-			print (part)
-			self.text_revision_body.insert(str(counter)+'.0', part+"\n")
+			self.text_revision_body.insert(str(counter)+'.0', part.replace("\"","")+"\n")
 			counter += 1
-
-
 
 		self.text_found_files_body.configure(state=DISABLED)
 		self.text_unfound_files_body.configure(state=DISABLED)
@@ -254,45 +320,78 @@ class mainUIClass:
 
 
 	def Alarm(self):
-		self.t.focus_force()
-		self.t.bell()
+		self.options_windows.focus_force()
+		self.options_windows.bell()
 
-
-	def printersNameList(self):
+	def create_options_window(self):
 		listx = []
+
 		for printerDetails in win32print.EnumPrinters(2):
 			listx.append(printerDetails[2])
 		self.printerList = listx
 
-	def create_options_window(self):
-		"""
-		self.t.(self.t)
-		self.t.wm_title(self.master,"Options")
-		self.t.grab_set(self.master)
-		self.t.close_button = Button(self.t, text="Close", command=self.master.quit)
-		self.t.close_button.pack()
-		sizex = 600
-		sizey = 400
-		posx  = 500
-		posy  = 400
+		self.options_windows = tkinter.Toplevel(self.master)
+		self.options_windows.title("Options")
 
-		self.t.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
-		self.t.bind("<FocusOut>", self.Alarm)
-		"""
-		pass
+		counter = 1
+		if self.selectedPrinter.get() == '':
+			self.selectedPrinter.set(self.printerList[0])
+
+		for printer in self.printerList:
+			tempRadio = Radiobutton(self.options_windows, text=printer, variable=self.selectedPrinter, value=printer)
+			tempRadio.grid(row=counter, column=0, sticky=W)
+			counter += 1
+
+		local_close_button = Button(self.options_windows, text="Ok", command=self.save_options_and_destroy_options_window)
+		local_close_button.grid(column=0,row=counter)
+		self.options_windows.focus_force()
+
+		self.options_windows.bind("<FocusOut>", self.Alarm)
+
+	def save_options_and_destroy_options_window(self):
+		f = open('C:\\Users\\'+user+'\\pdf_printer_settings','w+')
+		f.write(self.selectedPrinter.get())
+		f.close()
+		self.options_windows.destroy()
+
 
 	def printFiles(self):
+		f = open(self.POPENFile,'w+')
+		f.close()
 		for pdf in self.PDFs:
-			self.jobCounter = ghostscript(pdf,self.jobCounter,self.printer, 'letter')
+			self.jobCounter = ghostscript(pdf, self.jobCounter, self.selectedPrinter.get(), self.paperTypeLetter,self.POPENFile)
 			#print (jobCounter)
+		#self.progress.step(400)
+		os.remove(self.POPENFile)
+		posx  = 500
+		posy  = 400
+		sizex = 500
+		sizey = 100
+		top = Toplevel()
+		top.title("Done")
+		top.grid_rowconfigure(0,weigh=1)
+		top.grid_columnconfigure(0, weight=1)
+		top.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
+		msg = Message(top, text="Sent all files to printer.\nPlease wait for the printer to finish", width=200, pady=10)
+		msg.grid(row=0, column=0, columnspan=4)
+		button = Button(top,text="Ok", command=top.quit)
+		button.grid(row=1, column=0)
 
 
 if __name__=="__main__":
+	checkGhostScriptPath()
 
-	f = open('tmp','w+')
-	f.close()
 	root = tkinter.Tk()
 	root.style = ttk.Style()
 	mainUI = mainUIClass(root)
 	root.style.theme_use("winnative")
+	global user
+	user = os.getlogin()
+	try:
+		f = open('C:\\Users\\'+user+'\\pdf_printer_settings','r+')
+	except IOError:
+		f = open('C:\\Users\\'+user+'\\pdf_printer_settings','w+')
+
+	mainUI.selectedPrinter.set(f.readline().rstrip())
+	f.close()
 	root.mainloop()

@@ -1,0 +1,10 @@
+*.xls
+*.xlsx
+*.XLS
+*.XLXS
+*.png
+src/tmp
+src/build
+src/dist
+src/pdf_printer_settings
+src/__pycache__
