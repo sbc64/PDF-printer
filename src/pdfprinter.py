@@ -147,8 +147,8 @@ class mainUIClass:
 		self.master = master
 		self.master.title("PDF printer")
 		self.selectedPrinter = StringVar()
-		self.paperTypeLetter = 'letter'
-		self.paperLedger = 'ledger'
+		self.selectedPaper = StringVar()
+		self.selectedPaper.set('letter')
 		self.jobCounter = 0
 		self.PDFs = None
 		self.user = os.getlogin()
@@ -304,7 +304,7 @@ class mainUIClass:
 		self.text_revision_body.configure(state=DISABLED)
 
 
-	def Alarm(self):
+	def Alarm(self,event):
 		self.options_windows.focus_force()
 		self.options_windows.bell()
 
@@ -322,15 +322,28 @@ class mainUIClass:
 		if self.selectedPrinter.get() == '':
 			self.selectedPrinter.set(self.printerList[0])
 
+		self.options_label_printer = Label(self.options_windows,text="Select Printer")
+		self.options_label_printer.grid(row=0,column=0, sticky=W)
+
+		self.options_label_paper = Label(self.options_windows,text="Select Paper")
+		self.options_label_paper.grid(row=0,column=1, sticky=W)
+
 		for printer in self.printerList:
 			tempRadio = Radiobutton(self.options_windows, text=printer, variable=self.selectedPrinter, value=printer)
 			tempRadio.grid(row=counter, column=0, sticky=W)
 			counter += 1
 
+		self.selectedPaper.set('letter')
+		self.letter_radio = Radiobutton(self.options_windows, text='8 1/2x11', variable=self.selectedPaper, value='letter')
+		self.letter_radio.grid(row=1,column=1,sticky=W)
+		self.ledger_radio = Radiobutton(self.options_windows, text='11x17', variable=self.selectedPaper, value='ledger')
+		self.ledger_radio.grid(row=2,column=1,sticky=W)
+
+
 		local_close_button = Button(self.options_windows, text="Ok", command=self.save_options_and_destroy_options_window)
 		local_close_button.grid(column=0,row=counter)
-		self.options_windows.focus_force()
 
+		self.options_windows.focus_force()
 		self.options_windows.bind("<FocusOut>", self.Alarm)
 
 	def save_options_and_destroy_options_window(self):
@@ -343,7 +356,7 @@ class mainUIClass:
 	def printFiles(self):
 
 		for pdf in self.PDFs:
-			self.jobCounter = ghostscript(pdf, self.jobCounter, self.selectedPrinter.get(), self.paperTypeLetter,self.POPENFile)
+			self.jobCounter = ghostscript(pdf, self.jobCounter, self.selectedPrinter.get(), self.selectedPaper.get(),self.POPENFile)
 			#print (jobCounter)
 
 		#os.remove(self.POPENFile)
@@ -371,11 +384,18 @@ def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
 	filex.write(str(os.getcwd())+"\n")
 	global isFrozen
 	if isFrozen:
-		command = sys._MEIPASS+r"\gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
-		#command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
-		#the following string shoudl generate something like this: -sOutputFile="\\spool\KONICA MINOLTA 423"
-		command = command + "\"\\\\spool\\"+printer+"\" "
-		command = command + pdfPath
+		if paperType =='letter':
+			command = sys._MEIPASS+r"\gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+			#command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+			#the following string shoudl generate something like this: -sOutputFile="\\spool\KONICA MINOLTA 423"
+			command = command + "\"\\\\spool\\"+printer+"\" "
+			command = command + pdfPath
+		else:
+			command = sys._MEIPASS+r"\gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+			#command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
+			#the following string shoudl generate something like this: -sOutputFile="\\spool\KONICA MINOLTA 423"
+			command = command + "\"\\\\spool\\"+printer+"\" "
+			command = command + pdfPath
 		#print (command)
 	else:
 		command = r"gswin64c.exe -dPrinted -q -sDEVICE=mswinpr2 -sPAPERSIZE="+paperType+" -dBATCH -dFitPage -dNOPROMPT -dFIXEDMEDIA -dNOPAUSE -sOutputFile="
