@@ -284,19 +284,19 @@ class mainUIClass:
 
 		counter = 0
 		for pdf in self.PDFs:
-			self.text_found_files_body.insert(str(counter)+'.0',pdf.replace("\"","")+"\n")
+			self.text_found_files_body.insert(str(counter)+'.0',str(counter+1)+". "+pdf.replace("\"","")+"\n")
 			counter += 1
-
+		#print (counter)
 		self.totalFiles = counter
 		counter = 0
 
 		for part in self.unfoundItems:
-			self.text_unfound_files_body.insert(str(counter)+'.0', part.replace("\"","")+"\n")
+			self.text_unfound_files_body.insert(str(counter)+'.0', str(counter+1)+". "+part.replace("\"","")+"\n")
 			counter += 1
 
 		counter = 0
 		for part in self.wrongRevsion:
-			self.text_revision_body.insert(str(counter)+'.0', part.replace("\"","")+"\n")
+			self.text_revision_body.insert(str(counter)+'.0',str(counter+1)+". "+part.replace("\"","")+"\n")
 			counter += 1
 
 		self.text_found_files_body.configure(state=DISABLED)
@@ -375,7 +375,7 @@ class mainUIClass:
 		button.grid(row=1, column=0)
 
 def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
-	filex = open(filex,'w+')
+	filex = open(filex,'a')
 	filex.write(asctime()+"\n")
 	filex.write(str(jobCounter)+"\n")
 	filex.write(printer+"\n")
@@ -438,6 +438,9 @@ def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
 if __name__=="__main__":
 	global isFrozen
 
+	f = open('C:\\Users\\'+os.getlogin()+'\\tmpgs', 'w+')
+	f.truncate(0)
+	f.close()
 
 	checkGhostScriptPath()
 	root = tkinter.Tk()

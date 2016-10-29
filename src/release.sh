@@ -9,7 +9,7 @@ rm -r dist
 #cp "C:\Program Files\gs\gs9.19\bin\gswin64c.exe" .
 pyinstaller --noconsole --onefile pdfprinter.spec pdfprinter.py
 echo "Moving file to T:\\.."
-mv dist/pdfprinter.exe "T:\RELEASED_FILES\PDFprinterV0.1.3.exe"
+mv dist/pdfprinter.exe "T:\RELEASED_FILES\PDFprinterV0.1.4.exe"
 
 #rm gswin64.exe
 #rm gswin64c.exe
