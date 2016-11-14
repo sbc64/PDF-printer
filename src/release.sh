@@ -15,7 +15,7 @@ if [[ -z $gitStatusPorcelain ]]
 	pyinstaller --noconsole --onefile pdfprinter.spec pdfprinter.py
 	echo "Moving file to T:\\.."
 	commit=$(git log --pretty=format:%H -n1| cut -c1-6)
-	path=$(echo "T:\RELEASED_FILES\PDFprinterV0.2."$commit".exe")
+	path=$(echo "T:\RELEASED_FILES\PDFprinterV"$commit".exe")
 	echo $path
 	cp dist/pdfprinter.exe $path
 	echo "Done"
