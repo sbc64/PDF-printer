@@ -226,6 +226,8 @@ class mainUIClass:
 		self.POPENFile = 'C:\\Users\\'+self.user+'\\tmpgs'
 		self.print_wrong_revision_var = IntVar()
 		self.current_window = master
+		global isFrozen
+		self.runningInFrozen = isFrozen
 		#self.t = Toplevel
 
 		self.printer = 'KONICA MINOLTA 423'
@@ -314,6 +316,10 @@ class mainUIClass:
 				button = Button(top,text="Ok", command=top.destroy)
 				button.grid(row=1, column=0)
 				self.current_window = top
+				if self.runningInFrozen:
+					top.iconbitmap(sys._MEIPASS+r"/emblem_print.ico")
+				else:
+					top.iconbitmap("emblem_print.ico")
 				top.focus_force()
 				top.bind("<FocusOut>", self.Alarm)
 				return None
@@ -332,6 +338,10 @@ class mainUIClass:
 				button = Button(top,text="Ok", command=top.destroy)
 				button.grid(row=1, column=0)
 				self.current_window = top
+				if self.runningInFrozen:
+					top.iconbitmap(sys._MEIPASS+r"/emblem_print.ico")
+				else:
+					top.iconbitmap("emblem_print.ico")
 				top.focus_force()
 				top.bind("<FocusOut>", self.Alarm)
 				return None
@@ -360,6 +370,10 @@ class mainUIClass:
 					button.grid(row=1, column=0)
 					self.entryVar.set("")
 					self.current_window = top
+					if self.runningInFrozen:
+						top.iconbitmap(sys._MEIPASS+r"/emblem_print.ico")
+					else:
+						top.iconbitmap("emblem_print.ico")
 					top.focus_force()
 					top.bind("<FocusOut>", self.Alarm)
 					return None
@@ -379,6 +393,10 @@ class mainUIClass:
 				button.grid(row=1, column=0)
 				self.entryVar.set("")
 				top.focus_force()
+				if self.runningInFrozen:
+					top.iconbitmap(sys._MEIPASS+r"/emblem_print.ico")
+				else:
+					top.iconbitmap("emblem_print.ico")
 				self.current_window = top
 				top.bind("<FocusOut>", self.Alarm)
 				return None
@@ -439,6 +457,11 @@ class mainUIClass:
 
 		self.options_windows = tkinter.Toplevel(self.master)
 		self.options_windows.title("Options")
+
+		if self.runningInFrozen:
+			self.options_windows.iconbitmap(sys._MEIPASS+r"/emblem_print.ico")
+		else:
+			self.options_windows.iconbitmap("emblem_print.ico")
 
 		counter = 1
 		if self.selectedPrinter.get() == '':
@@ -501,6 +524,10 @@ class mainUIClass:
 		msg.grid(row=0, column=0, columnspan=4)
 		top.focus_force()
 		self.current_window = top
+		if self.runningInFrozen:
+			top.iconbitmap(sys._MEIPASS+r"/emblem_print.ico")
+		else:
+			top.iconbitmap("emblem_print.ico")
 		top.bind("<FocusOut>", self.Alarm)
 		button = Button(top,text="Ok", command=top.quit)
 		button.grid(row=1, column=0)
