@@ -3,7 +3,7 @@ import win32print
 from xlrd import open_workbook
 from openpyxl import load_workbook
 import subprocess
-from tkinter import filedialog, Tk, Label, Button, LEFT, RIGHT, W, Message, StringVar, Toplevel, Listbox, ttk, Text
+from tkinter import filedialog, Tk, Label, Button, LEFT, RIGHT, W, Message, StringVar, Toplevel, Listbox, ttk, Text, Checkbutton
 from tkinter import *
 import tkinter
 from tkinter import ttk
@@ -38,17 +38,75 @@ def checkGhostScriptPath():
 	except:
 		pass
 
+def determineColumnNumbers(worksheet, excelFormat):
+
+
+	drawingColumn = 0
+
+	if excelFormat == "xls":
+
+		counter = 0
+		for column in range(worksheet.ncols):
+			value = str(worksheet.cell(0,column).value).rstrip()
+			#print (value)
+			if value == "partno":
+				partColumn = column
+			elif value == "drawingno":
+				drawingColumn = column
+			elif value == "revlevel":
+				revColumn = column
+			elif value == "parttype":
+				gageColumn = column
+
+	elif excelFormat == "xlsx":
+		counter = 0
+		for column in worksheet.columns:
+			value = str(column[0].value).rstrip()
+			#print (value)
+			if value == "partno":
+				partColumn = counter
+			elif value == "drawingno":
+				drawingColumn = counter
+			elif value == "revlevel":
+				revColumn = counter
+			elif value == "parttype":
+				gageColumn = counter
+			counter += 1
+
+	else:
+		return None
+
+
+	if drawingColumn:
+		printOrderByFileFormat = "BURN"
+	else:
+		drawingColumn = 0
+		gageColumn = 0
+		printOrderByFileFormat = "WO"
+
+
+	return (partColumn, drawingColumn, revColumn, gageColumn, printOrderByFileFormat)
+
+
+
+
 def readExcel(fileToRead):
 	partNumberList, drawingNOList, revLevelList, gageList = [],[],[],[]
 	excelTempDict = {'PARTNO':'','DRAWING':'','REV':'','GAGE':''}
 	dictList = []
+
+
 	if fileToRead:
 		if fileToRead.split(".")[1] == "xls" or fileToRead.split(".")[1] == "XLS":
 			wb = open_workbook(str(fileToRead))
 			ws = wb.sheets()[0]
+			excelFormat = "xls"
+			partColumn, drawingColumn, revColumn, gageColumn, printOrderByFileFormat = determineColumnNumbers(ws, excelFormat)
 			for row in range(ws.nrows):
 				excelTempDict = {}
-				partnumber = str(ws.cell(row,0).value).rstrip()
+				partnumber = str(ws.cell(row,partColumn).value).rstrip()
+				if partnumber == 'None':
+					break
 				if not partnumber == 'partno':
 					if (partnumber[-1] == 'F'):
 						excelTempDict['PARTNO']=partnumber[:-1]
@@ -57,16 +115,24 @@ def readExcel(fileToRead):
 					else:
 						excelTempDict['PARTNO']=partnumber
 
-					excelTempDict['DRAWING']=str(ws.cell(row,4).value).rstrip()
-					excelTempDict['REV']=str(ws.cell(row,5).value).rstrip()
-					excelTempDict['GAGE']=str(ws.cell(row,8).value).rstrip()
+					excelTempDict['DRAWING']=str(ws.cell(row,drawingColumn).value).rstrip()
+					excelTempDict['REV']=str(ws.cell(row,revColumn).value).rstrip()
+					excelTempDict['GAGE']=str(ws.cell(row,gageColumn).value).rstrip()
 					dictList.append(excelTempDict)
+					#print (excelTempDict)
+					#print ()
 
 		elif fileToRead.split(".")[1] == "xlsx" or fileToRead.split(".")[1] == "XLSX":
+
 			ws = load_workbook(filename=str(fileToRead))['Sheet1']
+			excelFormat = "xlsx"
+			partColumn, drawingColumn, revColumn, gageColumn, printOrderByFileFormat = determineColumnNumbers(ws, excelFormat)
 			for row in ws.rows:
 				excelTempDict = {}
-				partnumber = str(row[0].value).rstrip()
+				partnumber = str(row[partColumn].value).rstrip()
+				if partnumber == 'None':
+					break
+
 				if not partnumber == 'partno':
 					if (partnumber[-1] == 'F'):
 						excelTempDict['PARTNO']=partnumber[:-1]
@@ -75,27 +141,30 @@ def readExcel(fileToRead):
 					else:
 						excelTempDict['PARTNO']=partnumber
 
-					excelTempDict['DRAWING']=str(row[4].value).rstrip()
-					excelTempDict['REV']=str(row[5].value).rstrip()
-					excelTempDict['GAGE']=str(row[8].value).rstrip()
+					excelTempDict['DRAWING']=str(row[drawingColumn].value).rstrip()
+					excelTempDict['REV']=str(row[revColumn].value).rstrip()
+					excelTempDict['GAGE']=str(row[gageColumn].value).rstrip()
 					dictList.append(excelTempDict)
-	return dictList
+					#print (excelTempDict)
+					#print ()
 
-def findPDFs(completelyOrderedDictList):
+	return (dictList, printOrderByFileFormat)
+
+def findPDFs(excelDictList):
 
 	RELEASED_PDFS_LS = os.listdir("T:\RELEASED_FILES\CURRENT_PDF")
 	#RELEASED_PDFS_LS = os.listdir("T:\ENGINEERING\FILE_SANDBOX\CADKEY TO PDF")
 
 	foundParts, unfoundParts, wrongRevsion = [], [], []
-	for dictx in completelyOrderedDictList:
+	for dictx in excelDictList:
 		for x in range(len(RELEASED_PDFS_LS)):
 
 			if dictx['PARTNO'] in RELEASED_PDFS_LS[x]:
 				if ('R'+dictx['REV'] in RELEASED_PDFS_LS[x]):
-					foundParts.append("\"T:\RELEASED_FILES\CURRENT_PDF\\"+RELEASED_PDFS_LS[x]+"\"")
+					foundParts.append("\""+RELEASED_PDFS_LS[x]+"\"")
 					break
 				else:
-					wrongRevsion.append(dictx['PARTNO'])
+					wrongRevsion.append("\""+RELEASED_PDFS_LS[x]+"\"")
 					break
 			else:
 				if(len(RELEASED_PDFS_LS)-1 == x):
@@ -103,10 +172,7 @@ def findPDFs(completelyOrderedDictList):
 
 	return [foundParts,unfoundParts, wrongRevsion]
 
-def configurePrinter():
-	pass
-
-def sortPartNumberList(excelInfo):
+def sortPartNumberList(excelInfo, printOrderByFileFormat):
 
 	floatTempList, otherTempList = [], []
 	dictsSortedByGage = sorted(excelInfo, key=itemgetter('GAGE'))
@@ -114,31 +180,36 @@ def sortPartNumberList(excelInfo):
 	gageSeperatedList = []
 	allList = []
 
-	for dictx in dictsSortedByGage:
-		#Sebastian
-		#print (dictx['GAGE'])
 
-		if previousGage == None:
-			previousGage = dictx['GAGE']
+	if printOrderByFileFormat == "BURN":
+		for dictx in dictsSortedByGage:
+			if previousGage == None:
+				previousGage = dictx['GAGE']
 
-		if previousGage == dictx['GAGE']:
-			gageSeperatedList.append(dictx)
+			if previousGage == dictx['GAGE']:
+				gageSeperatedList.append(dictx)
 
-		else:
-			allList.append(gageSeperatedList)
-			previousGage = dictx['GAGE']
-			gageSeperatedList = []
-			gageSeperatedList.append(dictx)
+			else:
+				allList.append(gageSeperatedList)
+				previousGage = dictx['GAGE']
+				gageSeperatedList = []
+				gageSeperatedList.append(dictx)
 
-	#captures the last list that did not get appende in if previousGage == dictx['GAGE']:
-	allList.append(gageSeperatedList)
-	orderedList = []
-	for listx in allList:
-		#Sorts the lists that contain the same gage by the drawing number
-		listSortedByDrawingNumber = sorted(listx, key=itemgetter('DRAWING'))
-		for x in listSortedByDrawingNumber:
-			orderedList.append(x)
-	return orderedList
+		#captures the last list that did not get appende in if previousGage == dictx['GAGE']:
+		allList.append(gageSeperatedList)
+		orderedList = []
+		for listx in allList:
+			#Sorts the lists that contain the same gage by the drawing number
+			listSortedByDrawingNumber = sorted(listx, key=itemgetter('DRAWING'))
+			for x in listSortedByDrawingNumber:
+				orderedList.append(x)
+
+		return orderedList
+
+	#DO not sort if the file is a burn.
+	else:
+		return excelInfo
+
 
 
 class mainUIClass:
@@ -153,6 +224,8 @@ class mainUIClass:
 		self.PDFs = None
 		self.user = os.getlogin()
 		self.POPENFile = 'C:\\Users\\'+self.user+'\\tmpgs'
+		self.print_wrong_revision_var = IntVar()
+		self.current_window = master
 		#self.t = Toplevel
 
 		self.printer = 'KONICA MINOLTA 423'
@@ -184,10 +257,8 @@ class mainUIClass:
 		self.label_unfound_files_header = Label(master,text="Parts that were NOT found:")
 		self.label_unfound_files_header.grid(row=3, column=2,sticky=W)
 
-		self.label_wrong_revision_header = Label(master,text="Parts with wrong revision:")
+		self.label_wrong_revision_header = Label(master,text="Parts with different rev level in spreadsheet:")
 		self.label_wrong_revision_header.grid(row=5, column=2,sticky=W)
-
-
 
 		#Bodys
 		self.text_found_files_body = Text(master, background="white",height=40, width=60, relief=GROOVE)
@@ -214,6 +285,9 @@ class mainUIClass:
 		self.options_button = Button(master, text="Printer Settings",command=self.create_options_window)
 		self.options_button.grid(row=15,column=1,pady=5,sticky=E,padx=10)
 
+		self.print_wrong_revision_checkbox = Checkbutton(master, text="Print different revision files", variable=self.print_wrong_revision_var)
+		self.print_wrong_revision_checkbox.grid(row=15, column=2,sticky=E)
+
 
 		self.excecute_button = Button(master, text="Print", command=self.checkSettingsBeforePrint)
 		self.excecute_button.grid(row=15,column=3,sticky=E,pady=5,padx=10)
@@ -221,57 +295,99 @@ class mainUIClass:
 
 	def checkSettingsBeforePrint(self):
 
-		if self.selectedPrinter.get != '' and self.PDFs !=None :
+		if self.selectedPrinter.get() != '' and self.PDFs != None :
 			printingThread = threading.Thread(target=self.printFiles)
 			printingThread.start()
 		else:
-			posx  = 500
-			posy  = 400
-			sizex = 500
-			sizey = 100
-			top = Toplevel()
-			top.grid_rowconfigure(0,weigh=1)
-			top.grid_columnconfigure(0, weight=1)
-			top.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
-			top.title("No file loaded")
-			msg = Message(top, text="Browse for a file before printing.",width=200, pady=10)
-			msg.grid(row=0, column=0,columnspan=5)
-			button = Button(top,text="Ok", command=top.destroy)
-			button.grid(row=1, column=0)
-			return None
-
+			if self.selectedPrinter.get() == '':
+				posx  = 500
+				posy  = 400
+				sizex = 500
+				sizey = 100
+				top = Toplevel()
+				top.grid_rowconfigure(0,weigh=1)
+				top.grid_columnconfigure(0, weight=1)
+				top.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
+				top.title("Printer not set")
+				msg = Message(top, text="Set the default printer in\nPrinter Settings.",width=200, pady=10)
+				msg.grid(row=0, column=0,columnspan=5)
+				button = Button(top,text="Ok", command=top.destroy)
+				button.grid(row=1, column=0)
+				self.current_window = top
+				top.focus_force()
+				top.bind("<FocusOut>", self.Alarm)
+				return None
+			elif self.PDFs == None:
+				posx  = 500
+				posy  = 400
+				sizex = 500
+				sizey = 100
+				top = Toplevel()
+				top.grid_rowconfigure(0,weigh=1)
+				top.grid_columnconfigure(0, weight=1)
+				top.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
+				top.title("No file loaded")
+				msg = Message(top, text="Browse for a file before printing.",width=200, pady=10)
+				msg.grid(row=0, column=0,columnspan=5)
+				button = Button(top,text="Ok", command=top.destroy)
+				button.grid(row=1, column=0)
+				self.current_window = top
+				top.focus_force()
+				top.bind("<FocusOut>", self.Alarm)
+				return None
 
 	def askFilename(self):
 		currdir = os.getcwd()
 		filey = None
 		filey = filedialog.askopenfilename(parent=self.master, initialdir=currdir, title='Select burn file')
 
-		if type(filey) == str:
+		if type(filey) == str and filey != '':
 			self.entryVar.set(filey)
 			try:
 				if not (str(self.entryVar.get()).split(".")[1] == "xls" or str(self.entryVar.get()).split(".")[1] == "XLS" or str(self.entryVar.get()).split(".")[1] == "xlsx" or str(self.entryVar.get()).split(".")[1] == "XLSX"):
+					posx  = 500
+					posy  = 400
+					sizex = 500
+					sizey = 100
 					top = Toplevel()
 					top.title("Wrong file type")
+					top.grid_rowconfigure(0,weigh=1)
+					top.grid_columnconfigure(0, weight=1)
+					top.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
 					msg = Message(top, text="You selected a wrong file type.\nPlease use xls or xlsx.", width=300, anchor=CENTER)
 					msg.grid(row=0, column=0)
 					button = Button(top,text="Ok", command=top.destroy)
 					button.grid(row=1, column=0)
 					self.entryVar.set("")
+					self.current_window = top
+					top.focus_force()
+					top.bind("<FocusOut>", self.Alarm)
 					return None
 			except:
+				posx  = 500
+				posy  = 400
+				sizex = 500
+				sizey = 100
 				top = Toplevel()
 				top.title("Wrong file type")
+				top.grid_rowconfigure(0,weigh=1)
+				top.grid_columnconfigure(0, weight=1)
+				top.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
 				msg = Message(top, text="You selected a wrong file type.\nPlease use xls or xlsx.", width=300, anchor=CENTER)
 				msg.grid(row=0, column=0)
 				button = Button(top,text="Ok", command=top.destroy)
 				button.grid(row=1, column=0)
 				self.entryVar.set("")
+				top.focus_force()
+				self.current_window = top
+				top.bind("<FocusOut>", self.Alarm)
 				return None
 		else:
 			return None
 
 
-		orderedExcelInfo = sortPartNumberList(readExcel(str(self.entryVar.get())))
+		temp = readExcel(str(self.entryVar.get()))
+		orderedExcelInfo = sortPartNumberList(temp[0],temp[1])
 		temp = findPDFs(orderedExcelInfo)
 		self.PDFs = temp [0]
 		self.unfoundItems = temp[1]
@@ -282,21 +398,27 @@ class mainUIClass:
 		self.text_unfound_files_body.configure(state=NORMAL)
 		self.text_revision_body.configure(state=NORMAL)
 
-		counter = 0
+		self.text_found_files_body.delete('0.0', END)
+		self.text_unfound_files_body.delete('0.0', END)
+		self.text_revision_body.delete('0.0', END)
+
+
+		counter = 1
 		for pdf in self.PDFs:
-			self.text_found_files_body.insert(str(counter)+'.0',str(counter+1)+". "+pdf.replace("\"","")+"\n")
+			self.text_found_files_body.insert(str(counter)+'.0',str(counter)+". "+pdf.replace("\"","")+"\n")
 			counter += 1
 		#print (counter)
+
 		self.totalFiles = counter
-		counter = 0
+		counter = 1
 
 		for part in self.unfoundItems:
-			self.text_unfound_files_body.insert(str(counter)+'.0', str(counter+1)+". "+part.replace("\"","")+"\n")
+			self.text_unfound_files_body.insert(str(counter)+'.0', str(counter)+". "+part.replace("\"","")+"\n")
 			counter += 1
 
-		counter = 0
+		counter = 1
 		for part in self.wrongRevsion:
-			self.text_revision_body.insert(str(counter)+'.0',str(counter+1)+". "+part.replace("\"","")+"\n")
+			self.text_revision_body.insert(str(counter)+'.0',str(counter)+". "+part.replace("\"","")+"\n")
 			counter += 1
 
 		self.text_found_files_body.configure(state=DISABLED)
@@ -304,9 +426,9 @@ class mainUIClass:
 		self.text_revision_body.configure(state=DISABLED)
 
 
-	def Alarm(self,event):
-		self.options_windows.focus_force()
-		self.options_windows.bell()
+	def Alarm(self, event):
+		self.current_window.focus_force()
+		self.current_window.bell()
 
 	def create_options_window(self):
 		listx = []
@@ -343,6 +465,7 @@ class mainUIClass:
 		local_close_button = Button(self.options_windows, text="Ok", command=self.save_options_and_destroy_options_window)
 		local_close_button.grid(column=0,row=counter)
 
+		self.current_window = self.options_windows
 		self.options_windows.focus_force()
 		self.options_windows.bind("<FocusOut>", self.Alarm)
 
@@ -356,8 +479,13 @@ class mainUIClass:
 	def printFiles(self):
 
 		for pdf in self.PDFs:
-			self.jobCounter = ghostscript(pdf, self.jobCounter, self.selectedPrinter.get(), self.selectedPaper.get(),self.POPENFile)
+			self.jobCounter = ghostscript("\"T:\RELEASED_FILES\CURRENT_PDF\\"+pdf.replace("\"","")+"\"", self.jobCounter, self.selectedPrinter.get(), self.selectedPaper.get(),self.POPENFile)
 			#print (jobCounter)
+
+		if self.print_wrong_revision_var.get():
+			for pdf in self.wrongRevsion:
+				self.jobCounter = ghostscript("\"T:\RELEASED_FILES\CURRENT_PDF\\"+pdf.replace("\"","")+"\"", self.jobCounter, self.selectedPrinter.get(), self.selectedPaper.get(),self.POPENFile)
+
 
 		#os.remove(self.POPENFile)
 		posx  = 500
@@ -371,6 +499,9 @@ class mainUIClass:
 		top.wm_geometry("%dx%d+%d+%d" % (sizex, sizey, posx, posy))
 		msg = Message(top, text="Sent all files to printer.\nPlease wait for the printer to finish", width=200, pady=10)
 		msg.grid(row=0, column=0, columnspan=4)
+		top.focus_force()
+		self.current_window = top
+		top.bind("<FocusOut>", self.Alarm)
 		button = Button(top,text="Ok", command=top.quit)
 		button.grid(row=1, column=0)
 
@@ -381,7 +512,7 @@ def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
 	filex.write(printer+"\n")
 	filex.write(pdfPath+"\n")
 	filex.write(paperType+"\n")
-	filex.write(str(os.getcwd())+"\n")
+	#filex.write(str(os.getcwd())+"\n")
 	global isFrozen
 	if isFrozen:
 		if paperType =='letter':
@@ -432,7 +563,7 @@ def ghostscript(pdfPath, jobCounter, printer,paperType,filex):
 		filex.write("\n")
 
 
-	filex.write("\n")
+	filex.write("\n\n")
 	f.close()
 
 if __name__=="__main__":
