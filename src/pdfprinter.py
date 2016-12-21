@@ -12,12 +12,12 @@ from operator import itemgetter
 import io
 from time import asctime
 #import win32api
-import winreg
+#import winreg
 
 
 def checkDependencies():
 	pass
-
+"""
 def checkGhostScriptPath():
 	try:
 		pathKey = "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment"
@@ -37,6 +37,7 @@ def checkGhostScriptPath():
 		winreg.CloseKey(key)
 	except:
 		pass
+"""
 
 def determineColumnNumbers(worksheet, excelFormat):
 
@@ -600,7 +601,7 @@ if __name__=="__main__":
 	f.truncate(0)
 	f.close()
 
-	checkGhostScriptPath()
+	#checkGhostScriptPath()
 	root = tkinter.Tk()
 	if getattr(sys, 'frozen', False):
 		isFrozen = True
