@@ -11,8 +11,6 @@ import threading
 from operator import itemgetter
 import io
 from time import asctime
-#import win32api
-#import winreg
 
 
 def checkDependencies():
@@ -229,9 +227,6 @@ class mainUIClass:
 		self.current_window = master
 		global isFrozen
 		self.runningInFrozen = isFrozen
-		#self.t = Toplevel
-
-		self.printer = 'KONICA MINOLTA 423'
 		"""
 		sizex = 600
 		sizey = 400
@@ -408,6 +403,12 @@ class mainUIClass:
 		temp = readExcel(str(self.entryVar.get()))
 		orderedExcelInfo = sortPartNumberList(temp[0],temp[1])
 		temp = findPDFs(orderedExcelInfo)
+
+		#The xlsx library is not reading the data correctly.
+		#for dictx in orderedExcelInfo:
+		#	print (dictx)
+
+
 		self.PDFs = temp [0]
 		self.unfoundItems = temp[1]
 		self.wrongRevsion = temp[2]
