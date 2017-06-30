@@ -173,7 +173,6 @@ def findPDFs(excelDictList):
 
 def sortPartNumberList(excelInfo, printOrderByFileFormat):
 
-	floatTempList, otherTempList = [], []
 	dictsSortedByGage = sorted(excelInfo, key=itemgetter('GAGE'))
 	previousGage = None
 	gageSeperatedList = []
